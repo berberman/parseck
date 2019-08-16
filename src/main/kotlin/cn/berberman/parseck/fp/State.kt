@@ -24,6 +24,8 @@ interface State<T, R> {
 
 fun <T, R> State<T, State<T, R>>.join() = bind(::id)
 
+fun <T,R> mreturn(a:R)= state<T,R>{s-> Pair(a,s) }
+
 fun <T, R> state(f: (T) -> Pair<R, T>): State<T, R> = object : State<T, R> {
     override fun runState(state: T): Pair<R, T> = f(state)
 }
