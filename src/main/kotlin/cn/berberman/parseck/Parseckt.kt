@@ -40,3 +40,4 @@ fun <T, R> parser(f: () -> State<T, Either<ParserException, R>>): Parser<T, R> =
 }
 
 fun <T, R> Parser<T, Parser<T, R>>.join() = bind(::id)
+

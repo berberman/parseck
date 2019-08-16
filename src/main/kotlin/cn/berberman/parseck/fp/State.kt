@@ -29,10 +29,7 @@ fun <T, R> state(f: (T) -> Pair<R, T>): State<T, R> = object : State<T, R> {
     override fun runState(state: T): Pair<R, T> = f(state)
 }
 
-fun <T> get()=object: State<T,T> {
-    override fun runState(state: T): Pair<T, T>  { return Pair(state,state) }
-}
+fun <T> get()= state {state:T-> Pair(state,state) }
 
-fun <T,R> put(a:R)=object: State<T,R> {
-    override fun runState(state: T): Pair<R,T>  { return Pair(a,state) }
-}
+
+fun <T> put(a:T)=state {state:T-> Pair(Unit,a) }
