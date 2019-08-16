@@ -32,4 +32,4 @@ fun <T, R> state(f: (T) -> Pair<R, T>): State<T, R> = object : State<T, R> {
 fun <T> get()= state {state:T-> Pair(state,state) }
 
 
-fun <T> put(a:T)=state {state:T-> Pair(Unit,a) }
+fun <T> put(a:T)=state<T,Unit> { Pair(Unit,a) }

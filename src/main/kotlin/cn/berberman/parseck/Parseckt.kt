@@ -41,3 +41,6 @@ fun <T, R> parser(f: () -> State<T, Either<ParserException, R>>): Parser<T, R> =
 
 fun <T, R> Parser<T, Parser<T, R>>.join() = bind(::id)
 
+fun <T> get() = parser<T,T> { state{ Pair<Either<ParserException, T>,T>(Right<ParserException,T>(it),it)}}
+
+fun <T> put(a:T) = parser <T,Unit>{ state { Pair<Either<ParserException, Unit>,T>(Right(Unit),a) } }
