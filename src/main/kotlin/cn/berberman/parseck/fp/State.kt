@@ -33,3 +33,5 @@ fun <T> get()= state {state:T-> Pair(state,state) }
 
 
 fun <T> put(a:T)=state<T,Unit> { Pair(Unit,a) }
+
+fun <T,R> mreturn(a:R) = state<T,R> { Pair(a,it) }
