@@ -9,7 +9,7 @@ interface State<T, R> {
         f(r) to s
     }
 
-    infix fun <S> ap(f: (State<T, (R) -> S>)): State<T, S> = state {
+    infix fun <S> ap(f: State<T, (R) -> S>): State<T, S> = state {
         val (a, s) = runState(it)
         val (frs, s1) = f.runState(s)
         frs(a) to s1
