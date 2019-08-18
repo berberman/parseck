@@ -45,7 +45,7 @@ interface Parser<T, R> {
 
         fun <T, R> returnM(a: R): Parser<T, R> = parser { state<T, Either<ParserException, R>> { suc(a) to it } }
 
-        fun <T, R> returnM(a: ParserException): Parser<T, R> =
+        fun <T, R> throwError(a: ParserException): Parser<T, R> =
             parser { state<T, Either<ParserException, R>> { err<R>(a) to it } }
     }
 
