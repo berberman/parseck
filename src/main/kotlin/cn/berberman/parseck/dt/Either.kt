@@ -1,4 +1,6 @@
-package cn.berberman.parseck.fp
+package cn.berberman.parseck.dt
+
+import cn.berberman.parseck.curried
 
 sealed class Either<L, R> {
 
@@ -19,9 +21,11 @@ class Left<L, R>(val value: L) : Either<L, R>() {
 
     override fun <T> map(f: (R) -> T): Either<L, T> = Left(value)
 
-    override fun <T> ap(f: Either<L, (R) -> T>): Either<L, T> = Left(value)
+    override fun <T> ap(f: Either<L, (R) -> T>): Either<L, T> =
+        Left(value)
 
-    override fun <T> bind(f: (R) -> Either<L, T>): Either<L, T> = Left(value)
+    override fun <T> bind(f: (R) -> Either<L, T>): Either<L, T> =
+        Left(value)
 
 }
 

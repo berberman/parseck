@@ -1,4 +1,4 @@
-package cn.berberman.parseck.fp
+package cn.berberman.parseck.dt
 
 
 interface Identity<T> {
@@ -9,9 +9,10 @@ interface Identity<T> {
         f(runIdentity())
     }
 
-    infix fun <S> ap(f: Identity<(T) -> S>): Identity<S> = identity {
-        f.runIdentity()(runIdentity())
-    }
+    infix fun <S> ap(f: Identity<(T) -> S>): Identity<S> =
+        identity {
+            f.runIdentity()(runIdentity())
+        }
 
     infix fun <S> bind(f: (T) -> Identity<S>): Identity<S> = f(runIdentity())
 

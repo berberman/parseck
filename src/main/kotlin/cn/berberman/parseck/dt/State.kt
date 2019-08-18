@@ -1,4 +1,4 @@
-package cn.berberman.parseck.fp
+package cn.berberman.parseck.dt
 
 interface State<T, R> {
 
@@ -9,16 +9,18 @@ interface State<T, R> {
         f(r) to s
     }
 
-    infix fun <S> ap(f: State<T, (R) -> S>): State<T, S> = state {
-        val (a, s) = runState(it)
-        val (frs, s1) = f.runState(s)
-        frs(a) to s1
-    }
+    infix fun <S> ap(f: State<T, (R) -> S>): State<T, S> =
+        state {
+            val (a, s) = runState(it)
+            val (frs, s1) = f.runState(s)
+            frs(a) to s1
+        }
 
-    infix fun <S> bind(f: (R) -> State<T, S>): State<T, S> = state {
-        val (a, s) = runState(it)
-        f(a).runState(s)
-    }
+    infix fun <S> bind(f: (R) -> State<T, S>): State<T, S> =
+        state {
+            val (a, s) = runState(it)
+            f(a).runState(s)
+        }
 
     companion object {
         fun <T> get(): State<T, T> = state { it to it }
@@ -31,6 +33,7 @@ interface State<T, R> {
 fun <T, R> State<T, State<T, R>>.join(): State<T, R> = bind(::id)
 
 
-fun <T, R> state(f: (T) -> Pair<R, T>): State<T, R> = object : State<T, R> {
+fun <T, R> state(f: (T) -> Pair<R, T>): State<T, R> = object :
+    State<T, R> {
     override fun runState(state: T): Pair<R, T> = f(state)
 }

@@ -1,0 +1,57 @@
+package cn.berberman.parseck.parser
+
+import cn.berberman.parseck.dt.Either
+import cn.berberman.parseck.dt.Left
+import cn.berberman.parseck.dt.Right
+
+typealias ParserS<R> = Parser<String, R>
+
+operator fun <T, R> Parser<T, R>.invoke(a: T): Either<ParserException, Pair<R, T>> {
+    val (e, rest) = runParser().runState(a)
+    return when (e) {
+        is Left -> Left(e.value)
+        is Right -> Right(e.value to rest)
+    }
+}
+
+fun satisfy(f: (Char) -> Boolean): ParserS<Char> =
+    Parser.get<String>() bind { s ->
+        when {
+            s.isEmpty() -> Parser.throwError(UnexpectedEOF)
+            f(s.first()) -> Parser.put(s.takeLast(s.length - 1)) bind { Parser.returnM<String, Char>(s.first()) }
+            else -> Parser.throwError(UnexpectedChar(s.first()))
+        }
+    }
+
+fun char(c: Char) = satisfy { it == c }
+
+infix fun <T, R> Parser<T, R>.or(p: Parser<T, R>): Parser<T, R> =
+    Parser.get<T>() bind { Parser.catchError(this) { p } }
+
+fun <T, R> List<Parser<T, R>>.choice(): Parser<T, R> =
+    foldRight(Parser.throwError(Unknown)) { p, acc ->
+        acc or p
+    }
+
+fun <T, R> Parser<T, R>.many(): Parser<T, List<R>> =
+    Parser.catchError(
+        bind { result ->
+            many() bind { rest ->
+                Parser.returnM<T, List<R>>(listOf(result) + rest)
+            }
+        }) {
+        Parser.returnM(listOf())
+    }
+
+fun <T, R> Parser<T, R>.some(): Parser<T, List<R>> {
+    TODO()
+}
+
+
+fun eof(): ParserS<Unit> =
+    Parser.get<String>() bind {
+        when {
+            it.isEmpty() -> Parser.returnM<String, Unit>(Unit)
+            else -> Parser.throwError(UnexpectedEOF)
+        }
+    }
