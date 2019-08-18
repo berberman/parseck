@@ -26,12 +26,28 @@ interface Parser<T, R> {
             when (e) {
                 is Right ->
                     f(e.value).runParser()
-                is Left  ->
+                is Left ->
                     state { Left<ParserException, U>(e.value) to it }
             }
         }
     }
 
+    companion object {
+
+        private fun <R> err(e: ParserException) = Left<ParserException, R>(e)
+        private fun <R> suc(a: R) = Right<ParserException, R>(a)
+
+        fun <T> get(): Parser<T, T> =
+            parser { state<T, Either<ParserException, T>> { Right<ParserException, T>(it) to it } }
+
+        fun <T> put(a: T): Parser<T, Unit> =
+            parser { state<T, Either<ParserException, Unit>> { Right<ParserException, Unit>(Unit) to a } }
+
+        fun <T, R> returnM(a: R): Parser<T, R> = parser { state<T, Either<ParserException, R>> { suc(a) to it } }
+
+        fun <T, R> returnM(a: ParserException): Parser<T, R> =
+            parser { state<T, Either<ParserException, R>> { err<R>(a) to it } }
+    }
 
 }
 
@@ -41,10 +57,3 @@ fun <T, R> parser(f: () -> State<T, Either<ParserException, R>>): Parser<T, R> =
 
 fun <T, R> Parser<T, Parser<T, R>>.join() = bind(::id)
 
-fun <T> get() = parser<T,T> { state{ Pair<Either<ParserException, T>,T>(Right<ParserException,T>(it),it)}}
-
-fun <T> put(a:T) = parser <T,Unit>{ state { Pair<Either<ParserException, Unit>,T>(Right(Unit),a) } }
-
-fun <T,R> mreturnRight(a:R) = parser<T,R> { state { Pair(Right(a),it) } }
-
-fun <T,R> mreturnLeft(a:ParserException) = parser<T,R> { state { Pair(Left(a),it) } }

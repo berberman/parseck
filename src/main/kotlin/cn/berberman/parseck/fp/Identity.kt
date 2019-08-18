@@ -17,8 +17,8 @@ interface Identity<T> {
 
 }
 
-fun <T> id(t: T) = t
+fun <T> id(t: T): T = t
 
-fun <T> identity(f: () -> T) = object : Identity<T> {
+fun <T> identity(f: () -> T): Identity<T> = object : Identity<T> {
     override fun runIdentity(): T = f()
 }

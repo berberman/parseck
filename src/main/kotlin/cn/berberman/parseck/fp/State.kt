@@ -20,18 +20,17 @@ interface State<T, R> {
         f(a).runState(s)
     }
 
+    companion object {
+        fun <T> get(): State<T, T> = state { it to it }
+
+        fun <T> put(a: T): State<T, Unit> = state { Unit to a }
+    }
+
 }
 
-fun <T, R> State<T, State<T, R>>.join() = bind(::id)
+fun <T, R> State<T, State<T, R>>.join(): State<T, R> = bind(::id)
 
 
 fun <T, R> state(f: (T) -> Pair<R, T>): State<T, R> = object : State<T, R> {
     override fun runState(state: T): Pair<R, T> = f(state)
 }
-
-fun <T> get()= state {state:T-> Pair(state,state) }
-
-
-fun <T> put(a:T)=state<T,Unit> { Pair(Unit,a) }
-
-fun <T,R> mreturn(a:R) = state<T,R> { Pair(a,it) }

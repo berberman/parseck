@@ -35,12 +35,12 @@ class Right<L, R>(val value: R) : Either<L, R>() {
 
 }
 
-inline fun <L, R> Either<L, R>.then(block: (R) -> Unit) = apply {
+inline fun <L, R> Either<L, R>.then(block: (R) -> Unit): Either<L, R> = apply {
     if (this is Right)
         block(value)
 }
 
-inline fun <L, R> Either<L, R>.otherwise(block: (L) -> Unit) = apply {
+inline fun <L, R> Either<L, R>.otherwise(block: (L) -> Unit): Either<L, R> = apply {
     if (this is Left)
         block(value)
 }
@@ -53,12 +53,17 @@ fun <L, R> Either<L, R>.valueOrNull(): R? =
 
 fun <L, R> Either<L, Either<L, R>>.join(): Either<L, R> = bind(::id)
 
-fun <T> T.either() = Right<Any?, T>(this)
+fun <T> T.either(): Right<Any?, T> = Right(this)
 
-fun <L, R1, R2, R> liftA2(t1: Either<L, R1>, t2: Either<L, R2>, f: ((R1, R2) -> R)) =
+fun <L, R1, R2, R> liftA2(t1: Either<L, R1>, t2: Either<L, R2>, f: ((R1, R2) -> R)): Either<L, R> =
     t2 ap t1.map { a -> f.curried()(a) }
 
-fun <L, R1, R2, R3, R> liftA3(t1: Either<L, R1>, t2: Either<L, R2>, t3: Either<L, R3>, f: ((R1, R2, R3) -> R)) =
+fun <L, R1, R2, R3, R> liftA3(
+    t1: Either<L, R1>,
+    t2: Either<L, R2>,
+    t3: Either<L, R3>,
+    f: ((R1, R2, R3) -> R)
+): Either<L, R> =
     t3 ap t2.ap(t1.map { a -> f.curried()(a) }
     )
 
@@ -68,5 +73,5 @@ fun <L, R1, R2, R3, R4, R> liftA4(
     t3: Either<L, R3>,
     t4: Either<L, R4>,
     f: ((R1, R2, R3, R4) -> R)
-) =
+): Either<L, R> =
     t4 ap t3.ap(t2 ap t1.map { a -> f.curried()(a) })
