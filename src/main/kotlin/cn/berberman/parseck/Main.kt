@@ -14,7 +14,7 @@ fun main() {
     println(sign("+-+-1").valueOrNull()?.first)
 }
 
-val sign = (char('+') or char('-')).many().map { it.map { s -> "${s}1".toInt() }.fold(1) { acc, i -> acc * i } }
+val sign = (char('+') or char('-')).many().map { it.map { s -> "${s}1".toInt() }.fold(1, Int::plus) }
 
 
 //val digit = satisfy { it.isDigit() } map { it.toInt() }

@@ -29,9 +29,7 @@ infix fun <T, R> Parser<T, R>.or(p: Parser<T, R>): Parser<T, R> =
     Parser.get<T>() bind { Parser.catchError(this) { p } }
 
 fun <T, R> List<Parser<T, R>>.choice(): Parser<T, R> =
-    foldRight(Parser.throwError(Unknown)) { p, acc ->
-        acc or p
-    }
+    foldRight(Parser.throwError(Unknown), Parser<T, R>::or)
 
 fun <T, R> Parser<T, R>.many(): Parser<T, List<R>> =
     Parser.catchError(
