@@ -26,24 +26,20 @@ fun satisfy(f: (Char) -> Boolean): ParserS<Char> =
 fun char(c: Char) = satisfy { it == c }
 
 infix fun <T, R> Parser<T, R>.or(p: Parser<T, R>): Parser<T, R> =
-    Parser.get<T>() bind { Parser.catchError(this) { p } }
+    Parser.catchError(this) { p }
+
+operator fun <T, R> Parser<T, R>.plus(p: Parser<T, R>) = or(p)
+
+operator fun <T, R> Parser<T, R>.times(p: Parser<T, R>) = bind { p }
 
 fun <T, R> List<Parser<T, R>>.choice(): Parser<T, R> =
     foldRight(Parser.throwError(Unknown), Parser<T, R>::or)
 
-fun <T, R> Parser<T, R>.many(): Parser<T, List<R>> =
-    Parser.catchError(
-        bind { result ->
-            many() bind { rest ->
-                Parser.returnM<T, List<R>>(listOf(result) + rest)
-            }
-        }) {
-        Parser.returnM(listOf())
-    }
 
-fun <T, R> Parser<T, R>.some(): Parser<T, List<R>> {
-    TODO()
-}
+fun <T, R> Parser<T, R>.many(): Parser<T, List<R>> = some() or Parser.returnM(listOf())
+
+fun <T, R> Parser<T, R>.some(): Parser<T, List<R>> =
+    bind { many() bind { rest -> Parser.returnM<T, List<R>>(listOf(it) + rest) } }
 
 
 fun eof(): ParserS<Unit> =

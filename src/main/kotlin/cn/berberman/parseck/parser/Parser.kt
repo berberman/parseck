@@ -1,5 +1,6 @@
 package cn.berberman.parseck.parser
 
+import cn.berberman.parseck.curried
 import cn.berberman.parseck.dt.*
 
 
@@ -72,6 +73,7 @@ interface Parser<T, R> {
         fun <T, R> catchError(p: Parser<T, R>, f: (ParserException) -> Parser<T, R>): Parser<T, R> =
             parser {
                 state<T, Either<ParserException, R>> {
+                    //TODO: it ≡ s
                     val (e, s) = p.runParser().runState(it)
                     when (e) {
                         is Left -> f(e.value).runParser().runState(it)
@@ -81,6 +83,27 @@ interface Parser<T, R> {
                     }
                 }
             }
+
+        fun <T, R1, R2, R> liftA2(t1: Parser<T, R1>, t2: Parser<T, R2>, f: ((R1, R2) -> R)): Parser<T, R> =
+            t2 ap t1.map { a -> f.curried()(a) }
+
+        fun <T, R1, R2, R3, R> liftA3(
+            t1: Parser<T, R1>,
+            t2: Parser<T, R2>,
+            t3: Parser<T, R3>,
+            f: ((R1, R2, R3) -> R)
+        ): Parser<T, R> =
+            t3 ap t2.ap(t1.map { a -> f.curried()(a) }
+            )
+
+        fun <T, R1, R2, R3, R4, R> liftA4(
+            t1: Parser<T, R1>,
+            t2: Parser<T, R2>,
+            t3: Parser<T, R3>,
+            t4: Parser<T, R4>,
+            f: ((R1, R2, R3, R4) -> R)
+        ): Parser<T, R> =
+            t4 ap t3.ap(t2 ap t1.map { a -> f.curried()(a) })
 
     }
 
