@@ -20,7 +20,7 @@ interface Parser<T, R> {
             when (e) {
                 is Right ->
                     f(e.value).runParser()
-                is Left ->
+                is Left  ->
                     state {
                         Left<ParserException, U>(
                             e.value
@@ -70,19 +70,15 @@ interface Parser<T, R> {
                 }
             }
 
-        fun <T, R> catchError(p: Parser<T, R>, f: (ParserException) -> Parser<T, R>): Parser<T, R> =
-            parser {
-                state<T, Either<ParserException, R>> {
-                    //TODO: it ≡ s
-                    val (e, s) = p.runParser().runState(it)
-                    when (e) {
-                        is Left -> f(e.value).runParser().runState(it)
-                        is Right -> Right<ParserException, R>(
-                            e.value
-                        ) to s
-                    }
+        fun <T, R> catchError(p: Parser<T, R>, f: (ParserException) -> Parser<T, R>): Parser<T, R> = parser {
+            State.get<T>().bind<Either<ParserException, R>> { s ->
+                val (e, s1) = p.runParser().runState(s)
+                when (e) {
+                    is Left  -> state { f(e.value).runParser().runState(s) }
+                    is Right -> state { suc(e.value) to s1 }
                 }
             }
+        }
 
         fun <T, R1, R2, R> liftA2(t1: Parser<T, R1>, t2: Parser<T, R2>, f: ((R1, R2) -> R)): Parser<T, R> =
             t2 ap t1.map { a -> f.curried()(a) }
