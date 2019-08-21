@@ -9,7 +9,7 @@ typealias ParserS<R> = Parser<String, R>
 operator fun <T, R> Parser<T, R>.invoke(a: T): Either<ParserException, Pair<R, T>> {
     val (e, rest) = runParser().runState(a)
     return when (e) {
-        is Left -> Left(e.value)
+        is Left  -> Left(e.value)
         is Right -> Right(e.value to rest)
     }
 }
@@ -17,9 +17,9 @@ operator fun <T, R> Parser<T, R>.invoke(a: T): Either<ParserException, Pair<R, T
 fun satisfy(f: (Char) -> Boolean): ParserS<Char> =
     Parser.get<String>() bind { s ->
         when {
-            s.isEmpty() -> Parser.throwError(UnexpectedEOF)
+            s.isEmpty()  -> Parser.throwError(UnexpectedEOF)
             f(s.first()) -> Parser.put(s.takeLast(s.length - 1)) bind { Parser.returnM<String, Char>(s.first()) }
-            else -> Parser.throwError(UnexpectedChar(s.first()))
+            else         -> Parser.throwError(UnexpectedChar(s.first()))
         }
     }
 
@@ -30,7 +30,7 @@ infix fun <T, R> Parser<T, R>.or(p: Parser<T, R>): Parser<T, R> =
 
 operator fun <T, R> Parser<T, R>.plus(p: Parser<T, R>) = or(p)
 
-operator fun <T, R> Parser<T, R>.times(p: Parser<T, R>) = bind { p }
+operator fun <T, R1, R2> Parser<T, R1>.times(p: Parser<T, R2>) = bind { p }
 
 fun <T, R> List<Parser<T, R>>.choice(): Parser<T, R> =
     foldRight(Parser.throwError(Unknown), Parser<T, R>::or)
@@ -46,6 +46,6 @@ fun eof(): ParserS<Unit> =
     Parser.get<String>() bind {
         when {
             it.isEmpty() -> Parser.returnM<String, Unit>(Unit)
-            else -> Parser.throwError(UnexpectedEOF)
+            else         -> Parser.throwError(UnexpectedEOF)
         }
     }

@@ -5,7 +5,7 @@ abstract class ParserException : RuntimeException() {
 }
 
 class UnexpectedChar(val char: Char) : ParserException() {
-    override fun toString(): String = "${super.toString()} $char"
+    override fun toString(): String = "${super.toString()} \"$char\""
 }
 
 object UnexpectedEOF : ParserException()
