@@ -8,6 +8,7 @@ fun main() {
 //    val signWithReal = sign bind { s -> real bind { num -> Parser.returnM<String, Double>(s * num) } }
 //    println(signWithReal("-+-233.3")
 
+
     val opParser = listOf('+', '-', '*', '/').map { char(it) }.choice()
     val exp =
         int bind { num1 ->
@@ -17,10 +18,10 @@ fun main() {
                         int bind { num2 ->
                             returnP {
                                 when (op) {
-                                    '+'  -> num1 + num2
-                                    '-'  -> num1 - num2
-                                    '*'  -> num1 * num2
-                                    '/'  -> num1 / num2
+                                    '+' -> num1 + num2
+                                    '-' -> num1 - num2
+                                    '*' -> num1 * num2
+                                    '/' -> num1 / num2
                                     else -> throw Unknown
                                 }
                             }
@@ -40,14 +41,23 @@ val space = char(' ') map { Unit }
 val digit = satisfy { it.isDigit() } map { it.toString().toInt() }
 val int = digit.some() map { it.joinToString(separator = "").toInt() }
 val real =
-    int.bind { a -> char('.') bind { dot -> int bind { b -> Parser.returnM<String, Double>("$a$dot$b".toDouble()) } } } or int.map(Int::toDouble)
+    int.bind { a -> char('.') bind { dot -> int bind { b -> Parser.returnM<String, Double>("$a$dot$b".toDouble()) } } } or int.map(
+        Int::toDouble
+    )
 
-fun string(s: String): Parser<String, String> = when {
+fun string(s: String): ParserS<String> = when {
     s.isEmpty() -> Parser.returnM("")
-    else        -> char(s.first()) bind { result -> string(s.substring(1)) bind { rest -> Parser.returnM<String, String>(result + rest) } }
+    else -> char(s.first()) bind { result -> string(s.substring(1)) bind { rest -> Parser.returnM<String, String>(result + rest) } }
 }
 
-fun <R> lexeme(p: ParserS<R>) = space bind { p bind { x -> space bind { Parser.returnM<String, R>(x) } } }
+fun until(s: String): ParserS<String> = Parser.get<String>() bind {
+    it.split(s)[0].let { r ->
+        Parser.put(it.removePrefix(r)) bind { returnP { r } }
+    }
+}
+
+fun <R> lexeme(f: () -> ParserS<R>) =
+    space.some() bind { f() bind { x -> space.many() bind { Parser.returnM<String, R>(x) } } }
 
 fun <R> returnP(f: () -> R) = Parser.returnM<String, R>(f())
 
