@@ -32,6 +32,10 @@ operator fun <T, R> Parser<T, R>.plus(p: Parser<T, R>) = or(p)
 
 operator fun <T, R1, R2> Parser<T, R1>.times(p: Parser<T, R2>) = bind { p }
 
+operator fun <T, R> Parser<T, R>.times(n: Int): Parser<T, List<R>> =
+    if (n <= 1) bind { Parser.returnM<T, List<R>>(listOf(it)) }
+    else bind { result -> times(n - 1) bind { rest -> Parser.returnM<T, List<R>>(listOf(result) + rest) } }
+
 fun <T, R> List<Parser<T, R>>.choice(): Parser<T, R> =
     foldRight(Parser.throwError(Unknown), Parser<T, R>::or)
 

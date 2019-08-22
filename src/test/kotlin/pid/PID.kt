@@ -1,3 +1,5 @@
+package pid
+
 import cn.berberman.parseck.*
 import cn.berberman.parseck.dt.Left
 import cn.berberman.parseck.parser.*
@@ -21,7 +23,7 @@ val expr = operation bind { op ->
         arg bind { num ->
             returnP {
                 pid = when (op) {
-                    "k" -> pid.copy(k = num)
+                    "k"  -> pid.copy(k = num)
                     "ki" -> pid.copy(ki = num)
                     "kd" -> pid.copy(kd = num)
                     "ia" -> pid.copy(integrateArea = num)
@@ -36,6 +38,7 @@ val parser = string("pid") * space * expr.some()
 
 fun main() {
     while (true) {
+        //pid.getPid ki ... k ... (at least one term)
         parser(readLine()!!).let { if (it is Left) println(it.value) }
         println(pid)
     }
