@@ -4,38 +4,6 @@ import cn.berberman.parseck.parser.*
 import kotlin.coroutines.*
 
 
-fun main() {
-//    val signWithReal = sign bind { s -> real bind { num -> Parser.returnM<String, Double>(s * num) } }
-//    println(signWithReal("-+-233.3")
-
-
-    val opParser = listOf('+', '-', '*', '/').map { char(it) }.choice()
-    val exp =
-        int bind { num1 ->
-            space.many() bind {
-                opParser bind { op ->
-                    space.many() bind {
-                        int bind { num2 ->
-                            returnP {
-                                when (op) {
-                                    '+'  -> num1 + num2
-                                    '-'  -> num1 - num2
-                                    '*'  -> num1 * num2
-                                    '/'  -> num1 / num2
-                                    else -> throw Unknown
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    println(exp("1+1"))
-    println(exp("1  -  1"))
-    println(exp("1 *6"))
-    println(exp("8 / 2"))
-}
-
 val sign = (char('+') + char('-')).some().map { it.map { s -> "${s}1".toInt() }.fold(1, Int::times) }
 val space = char(' ') map { Unit }
 val digit = satisfy { it.isDigit() } map { it.toString().toInt() }
@@ -47,7 +15,7 @@ val real =
 
 fun string(s: String): ParserS<String> = when {
     s.isEmpty() -> Parser.returnM("")
-    else        -> char(s.first()) bind { result -> string(s.substring(1)) bind { rest -> Parser.returnM<String, String>(result + rest) } }
+    else -> char(s.first()) bind { result -> string(s.substring(1)) bind { rest -> Parser.returnM<String, String>(result + rest) } }
 }
 
 fun until(s: String, eat: Boolean = false): ParserS<String> = Parser.get<String>() bind {

@@ -68,7 +68,6 @@ fun Rule.toParser(): ParserS<ResultContext> {
             }
             acc
         }
-
     return map {
         when (it) {
             is RuleAST.Str -> string(it.s)
