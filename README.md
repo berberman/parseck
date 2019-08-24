@@ -88,12 +88,6 @@ interface State<T, R> {
             val (a, s) = runState(it)
             f(a).runState(s)
         }
-
-
-    companion object {
-        fun <T> get(): State<T, T> = state { it to it }
-
-        fun <T> put(a: T): State<T, Unit> = state { Unit to a }
 }
 
 fun <T, R> State<T, State<T, R>>.join(): State<T, R> = bind(::id)
@@ -193,7 +187,7 @@ fun <T, R> catchError(p: Parser<T, R>, f: (ParserException) -> Parser<T, R>): Pa
 }
 ```
 
-`returnM` 就是单子中的 `return`，把返回值升格为返回这个值的解析器。`suc` 和 `err` 分别是装在 `Left` 的异常以及装在 `Right` 里的返回值。
+`suc` 和 `err` 代码没有贴在这里，它们分别是将异常装在 `Left` 里以及将返回值装在 `Right` 里。`returnM` 就是单子中的 `return`，把返回值升格为解析器，也就是在不改变单子上下文条件下直接返回这个值。`catchErorr` 为尝试运行解析器 `p`，如果遇到异常则不消耗状态，将运算转给返回另一个解析器的函数 `f`。
 
 `ParserException`：
 
@@ -255,7 +249,7 @@ parser("CDE") //Right ('C', "DE")
 parser("DDE") //Left UnexpectedChar('D')
 ```
 
-如果要重复多次匹配这个字符呢？那需要 `many` 和 `some`。在 Haskell 中它们是定义在 `Alternative` 中的，类型都是 `f a -> f [a]`。即重复这个单子运算任意次或至少一次，并将它们连接起来成为一个新的运算。在 Kotlin 中也可以写出类似实现：
+如果要重复多次匹配这个字符呢？那需要 `many` 和 `some`。在 Haskell 中它们是定义在 `Alternative` 中的，类型都是 `f a -> f [a]`，即重复这个单子运算任意次或至少一次，并将它们连接起来成为一个新的运算。在 Kotlin 中也可以写出类似实现：
 
 ```kotlin
 fun <T, R> Parser<T, R>.many(): Parser<T, List<R>> = some() or Parser.returnM(listOf())
@@ -264,12 +258,77 @@ fun <T, R> Parser<T, R>.some(): Parser<T, List<R>> =
     bind { many() bind { rest -> Parser.returnM<T, List<R>>(listOf(it) + rest) } }
 ```
 
-可以写一个解析符号的：
+`or` 的代码也没贴，也就是 `<|>`。`p1 or p2` 意为先尝试使用 `p1` 解析，若失败则换 `p2` 继续下去。
+
+再来一波运算符重载：
+
+```kotlin
+operator fun <T, R> Parser<T, R>.plus(p: Parser<T, R>) = or(p)
+
+operator fun <T, R1, R2> Parser<T, R1>.times(p: Parser<T, R2>) = bind { p }
+```
+
+`p1 + p2` 为两个解析器进行类似于*或* 的组合，`p1 * p2` 则是类似于*与* 的组合。
+
+### 符号
+
+来看个例子——解析数的符号：
 
 ```kotlin
 val sign = (char('+') + char('-')).some().map { it.map { s -> "${s}1".toInt() }.fold(1, Int::times) }
-sign("+-") // Right (-1, "")
-sign("+--") // Right (1, "")
-sign("+--+-") // Right (-1, "")
+sign("+-")     // Right (-1, "")
+sign("+--")    // Right (1, "")
+sign("+--+-")  // Right (-1, "")
 ```
 
+代码非常好理解：尝试吃掉 `-` 或 `+` 字符至少一次，后将它们转为正负 1 相乘得到最终结果。`(char('+') + char('-')).some()` 此表达式的返回值是 `ParserS<List<Char>>`，需要使用 `map` 来对函子中值进行映射，也就是先变成 `List<Int>` 再使用 `fold` 合并。
+
+### 实数
+
+实数的模样有两种情况：
+
+* *digit\+*
+* *digit+.digit\**
+
+不管怎样，这里先需要有一个吃字符串得到数字的解析器：
+
+```kotlin
+val digit = satisfy { it.isDigit() } map { it.toString().toInt() }
+```
+
+异常简单，如果一个字符是数字，就把它吃了并映射为 `Int`。
+
+再来一波解析整数：
+
+```kotlin
+val int = digit.some() map { it.joinToString(separator = "").toInt() }
+```
+
+整数就是许多数字。
+
+有了它们，就可以写实数解析器了：
+
+```kotlin
+val real =
+    int.bind { a ->
+        char('.') bind { dot ->
+            int bind { b ->
+                Parser.returnM<String, Double>("$a$dot$b".toDouble())
+            }
+        }
+    } or int.map(
+        Int::toDouble
+    )
+```
+
+可以看到 `or`，意味着分了上述的两种情况。第一种情况是存在小数部分的，第二种则是整数。先尝试吃掉一个整数，再吃掉一个小数点，再尝试吃掉一个整数，很容易理解。如果是整数的话直接用之前的整数解析器就好了，不过要把它的类型从 `ParserS<Int>` 映射为 `ParserS<Double>` 来和上一种情况匹配。在第一种情况下仅仅匹配三段就已经两层 lambda 嵌套了，有点像回调地狱。在 Haskell 等语言中有 **do notation** 这类东西来改善情况：
+
+```haskell
+parseReal = do
+	num1 <- int
+	dot  <- char "."
+	num2 <- int
+	return . read $ (show num1) ++ dot ++ (show num2)
+```
+
+而 Kotlin 中的**协程**所模拟的控制流也可以。但由于类型的限制，写不出一些灵活、可以泛化使用的函数，所以会非常僵硬并且效果不好。 
