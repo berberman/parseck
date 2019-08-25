@@ -12,7 +12,7 @@ newtype Parser a = P
   } deriving (Functor, Applicative, Monad, MonadError ParseError, MonadState String)
 ```
 
-其实是一个经过 `ExceptT` 单子变换过的 State。解析过程中的字符串作为状态单子的上下文，`ExceptT` 则是在外面套了一个 `Either`，表示解析中遇到错误，而解析器真正运行的值是 `a`。在 Haskell 中有 `GeneralisedNewtypeDeriving` 这种作弊的东西，这样一个 Parser 数据类型就定义并实现好了，加上 `satisfy` 之类的东西就可以用了。在 Kotlin 中可以仿照这个思路实现这个解析器，并用 `sealed class` 来代替 `ADT`，`interface` 来代替 `newtype`。
+其实是一个经过 `ExceptT` 单子变换过的 State。解析过程中的字符串作为状态单子的上下文，`ExceptT` 则是在外面套了一个 `Either`，表示解析中遇到错误，而解析器真正运行的值是 `a`。在 Haskell 中有 **GeneralisedNewtypeDeriving** 这种作弊的东西，这样一个 Parser 数据类型就定义并实现好了，加上 `satisfy` 之类的东西就可以用了。在 Kotlin 中可以仿照这个思路实现这个解析器，并用 *sealed class* 来代替 *ADT*，*functional interface* 来代替 *newtype*。
 
 ## 实现
 
@@ -332,3 +332,72 @@ parseReal = do
 ```
 
 而 Kotlin 中的**协程**所模拟的控制流也可以。但由于类型的限制，写不出一些灵活、可以泛化使用的函数，所以会非常僵硬并且效果不好。 
+
+## 用例
+
+### Console Parser
+
+之前我们在 JVM 平台实现了一个组播通信协议 [remote](https://github.com/MechDancer/framework/tree/master/remote) 用于机器人参数网络调试。当然，要调试的参数都是运行期受实时系统影响的，所以需要一个前端界面来发送参数，为了简便就选择了控制台。解析控制台有许多现成的框架，自己造一个简易版符合自己的使用习惯并没有很复杂。先前的版本在[这里](https://github.com/MechDancer/consoleparser)，是一个完整的项目，核心部分使用了 [确定型有穷自动机（DFA）](https://www.mechdancer.org/2018/11/12/programming/scanning-digit-comment-DFA/)。而使用组合子也可以简便地实现这个解析任务。先来看看效果：
+
+```kotlin
+val rules = Rules()
+rules
+    .addRule("print @word") {
+        println(word[0])
+    }
+    .addRule("@num / @num") {
+        println(num[0] / num[1])
+    }
+
+val parser = rules.buildParser()
+
+parser("print hi") // 打印出 "hi"
+parser("9/3")	   // 打印出 "3.0"
+```
+
+和没有绑定名字的**模式匹配**很像。规则集接收规则和符合规则时的操作（此时能访问 `ResultContext`），进行一些处理后合成一个解析器 `ParserS<Unit>`。这里的思路是先解析 Rule，再利用其生成 Parser。先定义规则语法树 ADT：
+
+```kotlin
+sealed class RuleAST {
+
+    data class Str(val s: String) : RuleAST()
+    object Num : RuleAST()
+    object Word : RuleAST()
+    object Sign : RuleAST()
+    object NA : RuleAST()
+
+    override fun toString(): String = when (this) {
+        is Str -> "Str(\"$s\")"
+        else -> javaClass.simpleName
+    }
+
+}
+
+typealias Rule = List<RuleAST>
+```
+
+即便叫了 `AST`，但这根本不是一颗树。。总之，现在的任务是造出这样一个 Parser：接受诸如 `"print @word"`、`"@num / @num"` 的规则字符串返回 `Rule` 的解析器。规则中只有两种类别的元素：
+
+* `Num` => `@num`、`Word` => `@word` 、`Sign` => `@sign` 这三类表示要从输入中解析并取出相应元素的标志
+* `Str(...)` => `.*` 在规则中写死的字符串，对应要在输入中必须匹配但不作为结果的
+
+```kotlin
+val ruleParser = ...
+ruleParser("print @word") // Right ([Str("print"), Word], "")
+ruleParser("@num / @num") // Right ([Num, Str("/"), Num])
+```
+
+就是一个解析第一中情况要取出东西的解析器和第二种情况解析任意字符直到 `"\n"` 的解析器组合，代码在仓库里，就不贴在这了。所有空格都去掉了，并且匹配输入时也忽略空格。下一步任务是将单条规则 `Rule` 转化为 `ParserS<ResultContext>`：
+
+```kotlin
+data class ResultContext(val num: List<Double>, val word: List<String>, val sign:List<Int>)
+```
+
+`Rule.toParser()` 的代码也请见仓库，只要把规则中的每项映射为对应的解析器，再连接起来即可。在连接的过程中构建 `ResultContext` 并放入结果。现在有了 `Rule -> ParserS<ResultContext>`，还缺少 `[Rule] -> ParserS<ResultContext>`。规则与规则间是可能发生相互关系的，若不不是这样，直接将的 `[Rule]` 映射为 `[ParserS<ResultContext>]` 再进行 `choice`，也就是 `asum`（定义在 `Data.Foldable`），换句话说即把它们用 `or`（`<|>`） 连接。考虑以下情况：
+
+```kotlin
+val ruleA = "print @num"
+val ruleB = "print @word"
+```
+
+`@word` 是任意字符串，`@num` 是数，显然数此时也是字符串，也就是说 `@word` **覆盖** 了 `@num`。
