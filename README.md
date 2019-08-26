@@ -384,7 +384,7 @@ typealias Rule = List<RuleAST>
 ```kotlin
 val ruleParser = ...
 ruleParser("print @word") // Right ([Str("print"), Word], "")
-ruleParser("@num / @num") // Right ([Num, Str("/"), Num])
+ruleParser("@num / @num") // Right ([Num, Str("/"), Num], "")
 ```
 
 就是一个解析第一中情况要取出东西的解析器和第二种情况解析任意字符直到 `"\n"` 的解析器组合，代码在仓库里，就不贴在这了。所有空格都去掉了，并且匹配输入时也忽略空格。下一步任务是将单条规则 `Rule` 转化为 `ParserS<ResultContext>`：
@@ -393,11 +393,12 @@ ruleParser("@num / @num") // Right ([Num, Str("/"), Num])
 data class ResultContext(val num: List<Double>, val word: List<String>, val sign:List<Int>)
 ```
 
-`Rule.toParser()` 的代码也请见仓库，只要把规则中的每项映射为对应的解析器，再连接起来即可。在连接的过程中构建 `ResultContext` 并放入结果。现在有了 `Rule -> ParserS<ResultContext>`，还缺少 `[Rule] -> ParserS<ResultContext>`。规则与规则间是可能发生相互关系的，若不不是这样，直接将的 `[Rule]` 映射为 `[ParserS<ResultContext>]` 再进行 `choice`，也就是 `asum`（定义在 `Data.Foldable`），换句话说即把它们用 `or`（`<|>`） 连接。考虑以下情况：
+`Rule.toParser()` 的代码也请见仓库，只要把规则中的每项映射为对应的解析器，再连接起来即可。在连接的过程中构建 `ResultContext` 并放入结果。现在有了 `Rule -> ParserS<ResultContext>`，还缺少 `[Rule] -> ParserS<ResultContext>`。规则与规则间是可能产生联系的，若不是这样，就可以直接将 `[Rule]` 映射为 `[ParserS<ResultContext>]` 再进行 `choice`，也就是 `asum`（定义在 `Data.Foldable`），换句话说即把它们用 `or`（`<|>`） 连接。考虑以下情况：
 
 ```kotlin
 val ruleA = "print @num"
 val ruleB = "print @word"
 ```
 
-`@word` 是任意字符串，`@num` 是数，显然数此时也是字符串，也就是说 `@word` **覆盖** 了 `@num`。
+`@word` 是任意字符串，`@num` 是数，显然数此时也是字符串，也就是说 `@word` **覆盖** 了 `@num`。 
+
