@@ -3,6 +3,7 @@ package cn.berberman.parseck.parser
 import cn.berberman.parseck.dt.Either
 import cn.berberman.parseck.dt.Left
 import cn.berberman.parseck.dt.Right
+import cn.berberman.parseck.dt.state
 
 typealias ParserS<R> = Parser<String, R>
 
@@ -44,6 +45,22 @@ fun <T, R> Parser<T, R>.many(): Parser<T, List<R>> = some() or Parser.returnM(li
 
 fun <T, R> Parser<T, R>.some(): Parser<T, List<R>> =
     bind { many() bind { rest -> Parser.returnM<T, List<R>>(listOf(it) + rest) } }
+
+// TODO
+//fun <T, R> Parser<T, R>.manyF(): Parser<T, List<R>> = parser {
+//    state {
+//        var ch:Pair<Either<ParserException, R>, T>;
+//        var results= listOf<R>();
+//        ch=this.runParser().runState(it)
+//
+//        while (ch.first is Right){
+//            results+= listOf<R>(ch.first.value);
+//
+//        }
+//        return@state Parser.returnM<T, List<R>>(results);
+//
+//    }
+//}
 
 
 fun eof(): ParserS<Unit> =
