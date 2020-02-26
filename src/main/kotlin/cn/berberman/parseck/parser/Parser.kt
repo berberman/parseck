@@ -1,7 +1,11 @@
 package cn.berberman.parseck.parser
 
-import cn.berberman.parseck.curried
-import cn.berberman.parseck.dt.*
+import cn.berberman.fp.util.curried
+import cn.berberman.fp.util.either.Either
+import cn.berberman.fp.util.either.Left
+import cn.berberman.fp.util.either.Right
+import cn.berberman.fp.util.state.State
+import cn.berberman.fp.util.state.state
 
 
 interface Parser<T, R> {
@@ -15,8 +19,8 @@ interface Parser<T, R> {
         map { r -> f.map { it(r) } }.join()
 
 
-    infix fun <U> bind(f: (R) -> Parser<T, U>) = parser {
-        runParser().bind { e ->
+    infix fun <U> flatMap(f: (R) -> Parser<T, U>) = parser {
+        runParser().flatMap { e ->
             when (e) {
                 is Right ->
                     f(e.value).runParser()
@@ -71,7 +75,7 @@ interface Parser<T, R> {
             }
 
         fun <T, R> catchError(p: Parser<T, R>, f: (ParserException) -> Parser<T, R>): Parser<T, R> = parser {
-            State.get<T>().bind<Either<ParserException, R>> { s ->
+            cn.berberman.fp.util.state.get<T>().flatMap<Either<ParserException, R>> { s ->
                 val (e, s1) = p.runParser().runState(s)
                 when (e) {
                     is Left  -> state { f(e.value).runParser().runState(s) }
@@ -110,5 +114,5 @@ fun <T, R> parser(f: () -> State<T, Either<ParserException, R>>): Parser<T, R> =
     override fun runParser(): State<T, Either<ParserException, R>> = f()
 }
 
-fun <T, R> Parser<T, Parser<T, R>>.join() = bind(::id)
+fun <T, R> Parser<T, Parser<T, R>>.join() = flatMap{it}
 
