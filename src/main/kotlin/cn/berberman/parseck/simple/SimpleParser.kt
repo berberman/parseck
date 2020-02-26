@@ -1,4 +1,4 @@
-package cn.berberman.parseck.legacy
+package cn.berberman.parseck.simple
 
 import cn.berberman.parseck.parser.Parser
 import cn.berberman.parseck.parser.UnexpectedChar
@@ -18,7 +18,6 @@ fun satisfy(f: (Char) -> Boolean): ParserS<Char> =
 
 fun char(c: Char) = satisfy { it == c }
 
-
 fun eof(): ParserS<Unit> =
     Parser.get<String>() flatMap {
         when {
@@ -26,3 +25,23 @@ fun eof(): ParserS<Unit> =
             else         -> Parser.throwError(UnexpectedEOF)
         }
     }
+
+fun oneOf(chars: List<Char>) =
+    satisfy { it in chars }
+
+fun noneOf(chars: List<Char>) =
+    satisfy { it !in chars }
+
+fun string(s: String): ParserS<String> =
+    when {
+        s.isEmpty() -> Parser.returnM("")
+        else        -> char(s.first()) flatMap { result ->
+            string(s.substring(1)) flatMap { rest ->
+                Parser.returnM<String, String>(result + rest)
+            }
+        }
+    }
+
+val digit = satisfy(Char::isDigit)
+
+inline fun <R> returnP(f: () -> R) = Parser.returnM<String, R>(f())

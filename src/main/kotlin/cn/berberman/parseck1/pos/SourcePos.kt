@@ -1,4 +1,4 @@
-package cn.berberman.parseck.pos
+package cn.berberman.parseck1.pos
 
 data class SourcePos(val name: String, val line: Int, val column: Int) : Comparable<SourcePos> {
 

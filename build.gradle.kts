@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "cn.berberman"
-version = "0.1.0-dev"
+version = "0.1.0-dev-1"
 
 repositories {
     mavenCentral()
@@ -14,10 +14,14 @@ repositories {
 
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
-    implementation("cn.berberman:fp-utils:0.1.0-dev")
+    implementation("cn.berberman:fp-utils:0.1.0-dev-2")
     testImplementation(kotlin("test-junit"))
-    testImplementation("org.mechdancer:remote:0.2.1-dev-13")
-    testImplementation("org.mechdancer:dependency:0.1.0-rc-3")
+    testImplementation("org.mechdancer:remote:0.2.1-dev-13"){
+        exclude("org.jetbrains.kotlin")
+    }
+    testImplementation("org.mechdancer:dependency:0.1.0-rc-3"){
+        exclude("org.jetbrains.kotlin")
+    }
 }
 
 tasks {

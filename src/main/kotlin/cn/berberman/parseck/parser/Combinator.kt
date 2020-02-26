@@ -1,19 +1,8 @@
 package cn.berberman.parseck.parser
 
-import cn.berberman.fp.util.either.Either
-import cn.berberman.fp.util.either.Left
-import cn.berberman.fp.util.either.Right
 import cn.berberman.fp.util.maybe.Maybe
+import cn.berberman.fp.util.state.State
 
-
-
-operator fun <T, R> Parser<T, R>.invoke(a: T): Either<ParserException, Pair<R, T>> {
-    val (e, rest) = runParser().runState(a)
-    return when (e) {
-        is Left  -> Left(e.value)
-        is Right -> Right(e.value to rest)
-    }
-}
 
 infix fun <T, R> Parser<T, R>.or(p: Parser<T, R>): Parser<T, R> = Parser.catchError(this) { p }
 
@@ -57,8 +46,14 @@ fun <T, R> chainr(p: Parser<T, R>, op: Parser<T, (R, R) -> R>, x: R) = chainr1(p
 
 fun <T, R> Parser<T, R>.many(): Parser<T, List<R>> = some() or Parser.returnM(listOf())
 
+fun <T, R> Parser<T, R>.many1() = some()
+
 fun <T, R> Parser<T, R>.some(): Parser<T, List<R>> =
     flatMap { many() flatMap { rest -> Parser.returnM<T, List<R>>(listOf(it) + rest) } }
+
+fun <T, End, R> Parser<T, R>.manyTill(end: Parser<T, End>): Parser<T, List<R>> =
+    end.flatMap { Parser.returnM<T, List<R>>(listOf()) } or flatMap { x -> manyTill(end) flatMap { xs -> Parser.returnM<T, List<R>>(listOf(x) + xs) } }
+
 
 fun <T, R> option(x: R, p: Parser<T, R>) = p or Parser.returnM(x)
 
@@ -85,7 +80,10 @@ fun <T, Sep, R> Parser<T, R>.sepEndBy1(sep: Parser<T, Sep>) =
 
 fun <T, Sep, R> Parser<T, R>.sepEndBy(sep: Parser<T, Sep>): Parser<T, List<R>> = sepEndBy1(sep) or Parser.returnM(listOf())
 
-
+fun <T, R> Parser<T, R>.lookAhead() = Parser.get<T>() flatMap { before ->
+    val (e, _) = runParser().runState(before)
+    parser { State.put(before) map { e } }
+}
 
 // TODO
 //fun <T, R> Parser<T, R>.manyF(): Parser<T, List<R>> = parser {

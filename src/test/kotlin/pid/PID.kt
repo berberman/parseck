@@ -2,6 +2,12 @@ package pid
 
 import cn.berberman.parseck.*
 import cn.berberman.parseck.parser.*
+import cn.berberman.parseck.simple.char
+import cn.berberman.parseck.simple.returnP
+import cn.berberman.parseck.simple.string
+import cn.berberman.parseck.token.lexeme
+import cn.berberman.parseck.token.natural
+import consoleparser.until
 import org.mechdancer.remote.presets.RemoteHub
 import org.mechdancer.remote.presets.remoteHub
 import org.mechdancer.remote.resources.Command
@@ -25,10 +31,10 @@ fun currentPID()= pidS[i]
 
 val jsEngine = ScriptEngineManager().getEngineByName("nashorn")
 val operation = listOf("kp", "ki", "kd", "ia", "da").sortedByDescending { it.length }.map { string(it) }.choice()
-val arg = until(" ") bind { returnP { jsEngine.eval(it).toString().toDouble() } }
-val expr = operation bind { op ->
-    lexeme {
-        arg bind { num ->
+val arg = until(" ") flatMap  { returnP { jsEngine.eval(it).toString().toDouble() } }
+val expr = operation flatMap  { op ->
+    lexeme (
+        arg flatMap  { num ->
             returnP {
                 pidS[i] = when (op) {
                     "kp" -> currentPID().copy(k = num)
@@ -40,7 +46,7 @@ val expr = operation bind { op ->
                 }
             }
         }
-    }
+    )
 }
 
 val remote = remoteHub("pwh").also {
@@ -88,7 +94,7 @@ fun RemoteHub.sendPosition(x: Double, y: Double, w: Double) =
         }
     })
 
-val parser = int bind { i = it; space * expr.some() }
+val parser = natural flatMap  { i = it; char(' ') * expr.some() }
 
 fun main() {
     while (true) {

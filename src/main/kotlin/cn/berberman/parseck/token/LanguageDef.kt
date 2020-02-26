@@ -1,16 +1,16 @@
 package cn.berberman.parseck.token
 
-import cn.berberman.parseck.parser.Parser
+import cn.berberman.parseck.simple.ParserS
 
-data class LanguageDef<T>(
+data class LanguageDef(
     val commentStart: String,
     val commentEnd: String,
     val commentLine: String,
     val nestedComments: Boolean,
-    val identStart: Parser<T, Char>,
-    val identLetter: Parser<T, Char>,
-    val opStart: Parser<T, Char>,
-    val opLetter: Parser<T, Char>,
+    val identStart: ParserS<Char>,
+    val identLetter: ParserS<Char>,
+    val opStart: ParserS<Char>,
+    val opLetter: ParserS<Char>,
     val reservedNames: List<String>,
     val reservedOpNames: List<String>,
     val caseSensitive: Boolean

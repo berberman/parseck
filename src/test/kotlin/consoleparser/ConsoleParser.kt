@@ -1,8 +1,12 @@
 package consoleparser
 
-import cn.berberman.parseck.*
-import cn.berberman.parseck.dt.valueOrNull
+import cn.berberman.fp.util.either.valueOrNull
 import cn.berberman.parseck.parser.*
+import cn.berberman.parseck.simple.ParserS
+import cn.berberman.parseck.simple.char
+import cn.berberman.parseck.simple.returnP
+import cn.berberman.parseck.simple.string
+import cn.berberman.parseck.token.float
 
 sealed class RuleAST {
 
@@ -31,9 +35,22 @@ typealias Rule = List<RuleAST>
 
 data class ResultContext(val num: List<Double>, val word: List<String>, val sign: List<Int>)
 
+fun until(s: String, eat: Boolean = false): ParserS<String> = Parser.get<String>() flatMap {
+    if (it.isEmpty())
+        returnP { it }
+    else it.split(s)[0].let { r ->
+        Parser.put(
+            it.removePrefix(r).run {
+                if (eat)
+                    removePrefix(s)
+                else this
+            }
+        ) flatMap { returnP { r } }
+    }
+}
 
 val ruleParser =
-    ((Parser.catchError(listOf("@num", "@word", "@sign").map { string(it) }.choice() bind {
+    ((Parser.catchError(listOf("@num", "@word", "@sign").map { string(it) }.choice() flatMap  {
         returnP {
             when (it) {
                 "@num" -> RuleAST.Num
@@ -43,7 +60,7 @@ val ruleParser =
             }
         }
     }) {
-        until("@") bind {
+        until("@") flatMap  {
             returnP {
                 if (it.isEmpty())
                     RuleAST.NA
@@ -60,7 +77,7 @@ fun Rule.toParser(): ParserS<ResultContext> {
     val ruleStrings = mapNotNull { it as? RuleAST.Str }.map { it.s }
 
     fun <R1, R2> connect(p: ParserS<R2>, acc: ParserS<R1>) =
-        p bind {
+        p flatMap  {
             when (it) {
                 is Double -> nums.add(it)
                 is String -> if (it !in ruleStrings) words.add(it)
@@ -71,14 +88,14 @@ fun Rule.toParser(): ParserS<ResultContext> {
     return map {
         when (it) {
             is RuleAST.Str -> string(it.s)
-            RuleAST.Num -> real
-            RuleAST.Word -> until("\n") bind { s -> if (s.isEmpty()) Parser.throwError(UnexpectedEOF) else returnP { s } }
-            RuleAST.Sign -> sign
+            RuleAST.Num -> float
+            RuleAST.Word -> until("\n") flatMap  { s -> if (s.isEmpty()) Parser.throwError(UnexpectedEOF) else returnP { s } }
+            RuleAST.Sign -> char('+') or char('-')
             RuleAST.NA -> throw Unknown
         }.wrapWithSpace()
     }.foldRight<ParserS<*>, ParserS<*>>(returnP { Unit }) { p, acc ->
         connect(p, acc)
-    }.bind {
+    }.flatMap {
         returnP {
             ResultContext(nums, words, signs)
         }
@@ -88,7 +105,7 @@ fun Rule.toParser(): ParserS<ResultContext> {
 fun Rule.build() = joinToString(separator = " ") { it.build() }
 
 fun <R> ParserS<R>.wrapWithSpace() =
-    space.many() bind { this bind { result -> space.many() bind { returnP { result } } } }
+    char(' ').many() flatMap  { this flatMap  { result -> char(' ').many() flatMap  { returnP { result } } } }
 
 fun main() {
     val rules = Rules()
@@ -135,7 +152,7 @@ class Rules {
     fun buildParser(): ParserS<Unit> {
         val map = core.mapKeys { (k, _) -> k.toParser() }
         fun connect(p: ParserS<ResultContext>, acc: ParserS<ResultContext>) =
-            Parser.catchError(p bind {
+            Parser.catchError(p flatMap  {
                 map.getValue(p).invoke(it)
                 returnP { it }
             }) {

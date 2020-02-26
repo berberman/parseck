@@ -1,4 +1,4 @@
-package cn.berberman.parseck.error
+package cn.berberman.parseck1.error
 
 sealed class Message(val msg: String) : Comparable<Message> {
 
