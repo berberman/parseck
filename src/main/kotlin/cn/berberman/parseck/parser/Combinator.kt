@@ -85,6 +85,9 @@ fun <T, R> Parser<T, R>.lookAhead() = Parser.get<T>() flatMap { before ->
     parser { State.put(before) map { e } }
 }
 
+fun <T, R> Parser<T, R>.notFollowedBy() =
+    (flatMap { c -> Parser.throwError<T, Unit>(Unexpected(c.toString())) }) or Parser.returnM(Unit)
+
 // TODO
 //fun <T, R> Parser<T, R>.manyF(): Parser<T, List<R>> = parser {
 //    state {

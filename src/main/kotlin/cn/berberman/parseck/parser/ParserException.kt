@@ -4,8 +4,8 @@ abstract class ParserException : RuntimeException() {
     override fun toString(): String = javaClass.simpleName
 }
 
-class UnexpectedChar(val char: Char) : ParserException() {
-    override fun toString(): String = "${super.toString()} \"$char\""
+class Unexpected(val msg: String) : ParserException() {
+    override fun toString(): String = "${super.toString()} \"$msg\""
 }
 
 object UnexpectedEOF : ParserException()

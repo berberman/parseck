@@ -1,7 +1,7 @@
 package cn.berberman.parseck.simple
 
 import cn.berberman.parseck.parser.Parser
-import cn.berberman.parseck.parser.UnexpectedChar
+import cn.berberman.parseck.parser.Unexpected
 import cn.berberman.parseck.parser.UnexpectedEOF
 
 typealias ParserS<R> = Parser<String, R>
@@ -12,7 +12,7 @@ fun satisfy(f: (Char) -> Boolean): ParserS<Char> =
         when {
             s.isEmpty()  -> Parser.throwError(UnexpectedEOF)
             f(s.first()) -> Parser.put(s.takeLast(s.length - 1)) flatMap { Parser.returnM<String, Char>(s.first()) }
-            else         -> Parser.throwError(UnexpectedChar(s.first()))
+            else         -> Parser.throwError(Unexpected(s.first().toString()))
         }
     }
 

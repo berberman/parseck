@@ -1,4 +1,4 @@
-package consoleparser
+package cn.berberman.parseck.samples.consoleparser
 
 import cn.berberman.fp.util.either.valueOrNull
 import cn.berberman.parseck.parser.*

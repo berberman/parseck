@@ -1,13 +1,12 @@
-package pid
+package cn.berberman.parseck.samples.pid
 
-import cn.berberman.parseck.*
 import cn.berberman.parseck.parser.*
 import cn.berberman.parseck.simple.char
 import cn.berberman.parseck.simple.returnP
 import cn.berberman.parseck.simple.string
 import cn.berberman.parseck.token.lexeme
 import cn.berberman.parseck.token.natural
-import consoleparser.until
+import cn.berberman.parseck.samples.consoleparser.until
 import org.mechdancer.remote.presets.RemoteHub
 import org.mechdancer.remote.presets.remoteHub
 import org.mechdancer.remote.resources.Command
