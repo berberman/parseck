@@ -7,21 +7,43 @@ import cn.berberman.parseck.simple.char
 import cn.berberman.parseck.simple.noneOf
 import cn.berberman.parseck.simple.returnP
 
-sealed class RegExp {
+abstract class RegExp
 
-    class Normal(val word: Char) : RegExp()
+class Normal(val c: Char) : RegExp()
+class Str(val es: List<RegExp>) : RegExp()
+class Or(val e1: RegExp, val e2: RegExp) : RegExp()
+class ZeroOrMore(val e: RegExp) : RegExp()
+class Void : RegExp()
+class Any : RegExp()
 
-    class Str(val words: List<RegExp>) : RegExp()
+fun MyRegExp.fromMe(): RegExp =
+    simplify().run {
+        when (this) {
+            is MyRegExp.Normal     -> Normal(word)
+            is MyRegExp.Str        -> Str(words.map { it.fromMe() })
+            is MyRegExp.Sum        -> Str(es.map { it.fromMe() })
+            is MyRegExp.Or         -> if (es.size != 2) Void() else Or(es[0].fromMe(), es[1].fromMe())
+            is MyRegExp.ZeroOrMore -> ZeroOrMore(e.fromMe())
+            is MyRegExp.Any        -> Any()
+            MyRegExp.Null          -> Void()
+        }
+    }
 
-    class Sum(val es: List<RegExp>) : RegExp()
+sealed class MyRegExp {
 
-    class Or(val es: List<RegExp>) : RegExp()
+    class Normal(val word: Char) : MyRegExp()
 
-    class ZeroOrMore(val e: RegExp) : RegExp()
+    class Str(val words: List<MyRegExp>) : MyRegExp()
 
-    class Any : RegExp()
+    class Sum(val es: List<MyRegExp>) : MyRegExp()
 
-    object Null : RegExp()
+    class Or(val es: List<MyRegExp>) : MyRegExp()
+
+    class ZeroOrMore(val e: MyRegExp) : MyRegExp()
+
+    class Any : MyRegExp()
+
+    object Null : MyRegExp()
 
     override fun toString(): String =
         when (this) {
@@ -36,88 +58,91 @@ sealed class RegExp {
 
 }
 
-typealias RegExpParser = ParserS<RegExp>
+typealias RegExpParser = ParserS<MyRegExp>
 
 val keys = listOf('(', ')', '*', '.', '|')
 
-val normal: RegExpParser = char('.').map { RegExp.Any() as RegExp } or noneOf(keys).map { RegExp.Normal(it) as RegExp }
+val normal: RegExpParser = char('.').map { MyRegExp.Any() as MyRegExp } or noneOf(keys).map { MyRegExp.Normal(it) as MyRegExp }
 val group: RegExpParser = char('(').lookAhead() flatMap { between(char('('), regex(), char(')')) }
-fun starOr(e: RegExp): RegExpParser = char('*').map { RegExp.ZeroOrMore(e) as RegExp } or returnP { e }
+fun starOr(e: MyRegExp): RegExpParser = char('*').map { MyRegExp.ZeroOrMore(e) as MyRegExp } or returnP { e }
 val ele: RegExpParser = group or normal
 val posted: RegExpParser = ele flatMap { starOr(it) }
-val branch: RegExpParser = posted.many1() map { if(it.size!=1) RegExp.Sum(it) else it.first() }
-fun regex(): RegExpParser = branch.sepBy1(char('|')) map { if(it.size!=1) RegExp.Or(it) else it.first() }
+val branch: RegExpParser = posted.many1() map { if (it.size != 1) MyRegExp.Sum(it) else it.first() }
+fun regex(): RegExpParser = branch.sepBy1(char('|')) map { if (it.size != 1) MyRegExp.Or(it) else it.first() }
 
-fun RegExp.flatten() =
+fun MyRegExp.flatten() =
     when (this) {
-        is RegExp.Or  -> es.flatMap {
-            if (it is RegExp.Or)
+        is MyRegExp.Or  -> es.flatMap {
+            if (it is MyRegExp.Or)
                 it.es
             else listOf(it)
         }
-        is RegExp.Sum -> es.flatMap {
-            if (it is RegExp.Sum)
-                it.es
-            else listOf(it)
+        is MyRegExp.Sum -> es.flatMap {
+            when (it) {
+                is MyRegExp.Sum -> it.es
+                is MyRegExp.Str -> it.words
+                else            -> listOf(it)
+            }
+
         }
-        else                                                                -> listOf()
+        else            -> listOf()
     }
 
-tailrec fun mergeNormalToStr(es: List<RegExp>): List<RegExp> {
+tailrec fun mergeNormalToStr(es: List<MyRegExp>): List<MyRegExp> {
     if (es.isEmpty()) return listOf()
     val first = es[0]
     if (es.size == 1) return listOf(first)
     val second = es[1]
     val rest = es.drop(2)
 
-    if (first is RegExp.Normal && second is RegExp.Normal)
-        return mergeNormalToStr(listOf(RegExp.Str(listOf(first, second))) + rest)
-    if (first is RegExp.Normal && second is RegExp.Str)
-        return mergeNormalToStr(listOf(RegExp.Str(listOf(first) + second.words)) + rest)
-    if (first is RegExp.Normal && second is RegExp.Any)
-        return mergeNormalToStr(listOf(RegExp.Str(listOf(first, second) + rest)))
+    if (first is MyRegExp.Normal && second is MyRegExp.Normal)
+        return mergeNormalToStr(listOf(MyRegExp.Str(listOf(first, second))) + rest)
+    if (first is MyRegExp.Normal && second is MyRegExp.Str)
+        return mergeNormalToStr(listOf(MyRegExp.Str(listOf(first) + second.words)) + rest)
+    if (first is MyRegExp.Normal && second is MyRegExp.Any)
+        return mergeNormalToStr(listOf(MyRegExp.Str(listOf(first, second) + rest)))
 
-    if (first is RegExp.Str && second is RegExp.Normal)
-        return mergeNormalToStr(listOf(RegExp.Str(first.words + second)) + rest)
-    if (first is RegExp.Str && second is RegExp.Str)
-        return mergeNormalToStr(listOf(RegExp.Str(first.words + second.words)) + rest)
-    if (first is RegExp.Str && second is RegExp.Any)
-        return mergeNormalToStr(listOf(RegExp.Str(first.words + second)) + rest)
+    if (first is MyRegExp.Str && second is MyRegExp.Normal)
+        return mergeNormalToStr(listOf(MyRegExp.Str(first.words + second)) + rest)
+    if (first is MyRegExp.Str && second is MyRegExp.Str)
+        return mergeNormalToStr(listOf(MyRegExp.Str(first.words + second.words)) + rest)
+    if (first is MyRegExp.Str && second is MyRegExp.Any)
+        return mergeNormalToStr(listOf(MyRegExp.Str(first.words + second)) + rest)
 
-    if (first is RegExp.Any && second is RegExp.Normal)
-        return mergeNormalToStr(listOf(RegExp.Str(listOf(first, second) + rest)))
-    if (first is RegExp.Any && second is RegExp.Str)
-        return mergeNormalToStr(listOf(RegExp.Str(listOf(first) + second.words + rest)))
-    if (first is RegExp.Any && second is RegExp.Any)
-        return mergeNormalToStr(listOf(RegExp.Str(listOf(first, second))) + rest)
+    if (first is MyRegExp.Any && second is MyRegExp.Normal)
+        return mergeNormalToStr(listOf(MyRegExp.Str(listOf(first, second) + rest)))
+    if (first is MyRegExp.Any && second is MyRegExp.Str)
+        return mergeNormalToStr(listOf(MyRegExp.Str(listOf(first) + second.words + rest)))
+    if (first is MyRegExp.Any && second is MyRegExp.Any)
+        return mergeNormalToStr(listOf(MyRegExp.Str(listOf(first, second))) + rest)
 
     return listOf(first) + mergeNormalToStr(es.drop(1))
 }
 
-fun RegExp.simplify(): RegExp =
+fun MyRegExp.simplify(): MyRegExp =
     when (this) {
-        is RegExp.Or  -> {
+        is MyRegExp.Or  -> {
             val s = flatten()
             when {
-                s.isEmpty() -> RegExp.Null
+                s.isEmpty() -> MyRegExp.Null
                 s.size == 1 -> s.first()
-                else        -> RegExp.Or(s.map { it.simplify() })
+                else        -> MyRegExp.Or(s.map { it.simplify() })
             }
         }
-        is RegExp.Sum -> {
-            val s = mergeNormalToStr(flatten().filter { it !is RegExp.Null })
+        is MyRegExp.Sum -> {
+            val s = mergeNormalToStr(flatten().filter { it !is MyRegExp.Null })
             when {
-                s.isEmpty() -> RegExp.Null
+                s.isEmpty() -> MyRegExp.Null
                 s.size == 1 -> s.first()
-                else        -> RegExp.Sum(s.map { it.simplify() })
+                else        -> MyRegExp.Sum(s.map { it.simplify() }.flatMap { if (it is MyRegExp.Str) it.words else listOf(it) })
             }
         }
-        else                                                                -> this
+        else            -> this
     }
 
 fun main() {
     val parser = regex()
-    val result = parser("(a.*)|(bb)")
+    val result = parser("((((mck*v(r|v)m)za*)j)|o)")
     val data = result.valueOrNull()!!.first
-    println(data.simplify().simplify().simplify())
+    println(data.simplify().simplify())
 }
